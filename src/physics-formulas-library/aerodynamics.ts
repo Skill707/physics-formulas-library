@@ -8,9 +8,13 @@ import type {
   Newtons,
   Pascals,
   PascalsSecond,
+  Radians,
   SquareMeters,
 } from "./types";
 import { Vector3 } from "three";
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
 
 /** Dynamic pressure */
 export function dynamicPressure(
@@ -66,6 +70,121 @@ export function reynoldsNumber(
   viscosity: PascalsSecond
 ): Dimensionless {
   return ((density * speed * length) / viscosity) as Dimensionless;
+}
+
+/** Reynolds number at chord location x */
+export function reynoldsNumberAtX(
+  density: KilogramsPerCubicMeter,
+  speed: MetersPerSecond,
+  x: Meters,
+  viscosity: PascalsSecond
+): Dimensionless {
+  return ((density * speed * x) / viscosity) as Dimensionless;
+}
+
+/** Reynolds number based on chord */
+export function reynoldsNumberChord(
+  density: KilogramsPerCubicMeter,
+  speed: MetersPerSecond,
+  chord: Meters,
+  viscosity: PascalsSecond
+): Dimensionless {
+  return ((density * speed * chord) / viscosity) as Dimensionless;
+}
+
+/** Thin airfoil lift coefficient with clamping */
+export function thinAirfoilLiftCoefficient(
+  alpha: Radians,
+  clLimit: Dimensionless = 1.6 as Dimensionless
+): Dimensionless {
+  const raw = (2 * Math.PI * (alpha as number)) as number;
+  return clamp(raw, -(clLimit as number), clLimit as number) as Dimensionless;
+}
+
+/** Chordwise pressure coefficient for visualization */
+export function chordwisePressureCoefficient(
+  xOverC: Dimensionless,
+  cl: Dimensionless,
+  camber: Dimensionless,
+  surface: "upper" | "lower"
+): Dimensionless {
+  const x = clamp(xOverC as number, 1e-4, 0.999);
+  const suction = (1.1 + 0.6 * (1 - x)) * Math.sqrt(1 - x);
+  const camberBias = 0.25 * (camber as number) * (1 - x);
+  const signed = surface === "upper" ? -1 : 1;
+  return (signed * (suction + camberBias) * (cl as number)) as Dimensionless;
+}
+
+/** Static pressure from pressure coefficient */
+export function pressureFromCoefficient(
+  pInf: Pascals,
+  q: Pascals,
+  cp: Dimensionless
+): Pascals {
+  return (pInf + q * (cp as number)) as Pascals;
+}
+
+/** Laminar skin friction coefficient at x */
+export function laminarSkinFrictionCoefficient(
+  reynoldsX: Dimensionless
+): Dimensionless {
+  const re = Math.max(1, reynoldsX as number);
+  return (0.664 / Math.sqrt(re)) as Dimensionless;
+}
+
+/** Turbulent skin friction coefficient at x */
+export function turbulentSkinFrictionCoefficient(
+  reynoldsX: Dimensionless
+): Dimensionless {
+  const re = Math.max(1, reynoldsX as number);
+  return (0.0592 / Math.pow(re, 1 / 5)) as Dimensionless;
+}
+
+/** Wall shear stress */
+export function wallShearStress(q: Pascals, cf: Dimensionless): Pascals {
+  return (q * (cf as number)) as Pascals;
+}
+
+/** Skin friction drag coefficient from integrating Cf along the chord */
+export function skinFrictionDragCoefficient(
+  reynoldsChord: Dimensionless,
+  isLaminar: boolean,
+  samples = 80
+): Dimensionless {
+  const n = Math.max(10, Math.floor(samples));
+  let accum = 0;
+  let prevCf = 0;
+  let prevX = 1 / n;
+  for (let i = 1; i <= n; i += 1) {
+    const x = i / n;
+    const reX = (reynoldsChord as number) * x;
+    const cf = isLaminar
+      ? (laminarSkinFrictionCoefficient(reX as Dimensionless) as number)
+      : (turbulentSkinFrictionCoefficient(reX as Dimensionless) as number);
+    if (i > 1) {
+      accum += 0.5 * (cf + prevCf) * (x - prevX);
+    }
+    prevCf = cf;
+    prevX = x;
+  }
+  return accum as Dimensionless;
+}
+
+/** Pressure drag coefficient */
+export function pressureDragCoefficient(
+  cl: Dimensionless,
+  cd0: Dimensionless,
+  k: Dimensionless
+): Dimensionless {
+  return ((cd0 as number) + (k as number) * (cl as number) * (cl as number)) as Dimensionless;
+}
+
+/** Total drag coefficient */
+export function totalDragCoefficient(
+  cdFriction: Dimensionless,
+  cdPressure: Dimensionless
+): Dimensionless {
+  return ((cdFriction as number) + (cdPressure as number)) as Dimensionless;
 }
 
 /** Mach number */
