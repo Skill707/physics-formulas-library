@@ -1,5 +1,5 @@
 import { Vector3 } from "three";
-import type { Dimensionless, Meters, Newtons } from "./types";
+import type { Meters } from "./types";
 
 /** Projection of vector a onto vector b */
 export function projectVector(a: Vector3, b: Vector3): Vector3 {
@@ -18,14 +18,6 @@ export function rejectVector(a: Vector3, b: Vector3): Vector3 {
 export function reflectVector(v: Vector3, normal: Vector3): Vector3 {
   const n = normal.clone().normalize();
   return v.clone().sub(n.multiplyScalar(2 * v.dot(n)));
-}
-
-/** Moment of a force about a point: r x F */
-export function momentFromPoint(
-  point: Vector3,
-  force: Vector3
-): Vector3 {
-  return point.clone().cross(force);
 }
 
 /** Distance from a point to a plane */

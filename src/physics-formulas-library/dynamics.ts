@@ -93,6 +93,11 @@ export function torqueVector(momentArm: Vector3, force: Vector3): Vector3 {
   return momentArm.clone().cross(force);
 }
 
+/** Moment of a force about a point: r x F */
+export function momentFromPoint(point: Vector3, force: Vector3): Vector3 {
+  return point.clone().cross(force);
+}
+
 /** Angular momentum vector: r x p */
 export function angularMomentumVector(position: Vector3, momentumVec: Vector3): Vector3 {
   return position.clone().cross(momentumVec);
@@ -168,19 +173,4 @@ export function gravitationalForce(
   r: Meters
 ): Newtons {
   return ((BIG_G * m1 * m2) / (r * r)) as Newtons;
-}
-
-/** Moment of inertia for a solid cylinder about its axis */
-export function inertiaSolidCylinder(mass: Kilograms, radius: Meters): KilogramSquareMeters {
-  return (0.5 * mass * radius * radius) as KilogramSquareMeters;
-}
-
-/** Moment of inertia for a solid sphere about its axis */
-export function inertiaSolidSphere(mass: Kilograms, radius: Meters): KilogramSquareMeters {
-  return (0.4 * mass * radius * radius) as KilogramSquareMeters;
-}
-
-/** Moment of inertia for a thin rod about its center */
-export function inertiaRodCenter(mass: Kilograms, length: Meters): KilogramSquareMeters {
-  return ((1 / 12) * mass * length * length) as KilogramSquareMeters;
 }

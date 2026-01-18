@@ -1,5 +1,6 @@
 import type {
   Dimensionless,
+  Kilograms,
   KilogramsPerCubicMeter,
   KilogramsPerSquareMeter,
   Meters,
@@ -92,8 +93,11 @@ export function wingLoadingFromWeight(weight: Newtons, area: SquareMeters): Pasc
 }
 
 /** Wing loading from mass */
-export function wingLoadingFromMass(massPerArea: KilogramsPerSquareMeter): KilogramsPerSquareMeter {
-  return massPerArea;
+export function wingLoadingFromMass(
+  mass: Kilograms,
+  area: SquareMeters
+): KilogramsPerSquareMeter {
+  return (mass / area) as KilogramsPerSquareMeter;
 }
 
 /** Stall speed from maximum lift coefficient */

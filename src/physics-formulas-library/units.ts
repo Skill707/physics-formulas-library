@@ -1,5 +1,6 @@
 import type {
   Degrees,
+  Dimensionless,
   Feet,
   Kilometers,
   Knots,
@@ -9,9 +10,14 @@ import type {
   Radians,
 } from "./types";
 
-export const degToRad = (deg: Degrees): Radians => ((deg * Math.PI) / 180) as Radians;
+/** Degree to radian conversion factor */
+export const DEG2RAD = (Math.PI / 180) as Dimensionless;
+/** Radian to degree conversion factor */
+export const RAD2DEG = (180 / Math.PI) as Dimensionless;
 
-export const radToDeg = (rad: Radians): Degrees => ((rad * 180) / Math.PI) as Degrees;
+export const degToRad = (deg: Degrees): Radians => (deg * DEG2RAD) as Radians;
+
+export const radToDeg = (rad: Radians): Degrees => (rad * RAD2DEG) as Degrees;
 
 /** Convert kilometers to meters */
 export const kmToM = (km: Kilometers): Meters => (km * 1000) as Meters;

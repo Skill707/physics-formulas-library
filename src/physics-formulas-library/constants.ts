@@ -40,6 +40,3 @@ export const MU0 = (4 * Math.PI * 1e-7) as HenrysPerMeter;
 export const K_E = 8.9875517923e9 as CoulombConstant;
 /** Astronomical unit */
 export const AU = 149597870700 as Meters;
-/** Unit conversion constants */
-export const RAD2DEG = (180 / Math.PI) as Dimensionless;
-export const DEG2RAD = (Math.PI / 180) as Dimensionless;

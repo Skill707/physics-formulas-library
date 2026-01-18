@@ -50,6 +50,21 @@ export function inertiaTensorCylinder(
   return m;
 }
 
+/** Moment of inertia for a solid cylinder about its axis */
+export function inertiaSolidCylinder(mass: Kilograms, radius: Meters): KilogramSquareMeters {
+  return (0.5 * mass * radius * radius) as KilogramSquareMeters;
+}
+
+/** Moment of inertia for a solid sphere about its axis */
+export function inertiaSolidSphere(mass: Kilograms, radius: Meters): KilogramSquareMeters {
+  return (0.4 * mass * radius * radius) as KilogramSquareMeters;
+}
+
+/** Moment of inertia for a thin rod about its center */
+export function inertiaRodCenter(mass: Kilograms, length: Meters): KilogramSquareMeters {
+  return ((1 / 12) * mass * length * length) as KilogramSquareMeters;
+}
+
 /** Parallel axis theorem: I = Icm + m * d^2 */
 export function parallelAxis(
   inertiaCm: KilogramSquareMeters,
