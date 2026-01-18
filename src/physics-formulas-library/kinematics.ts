@@ -7,6 +7,7 @@ import type {
   RadiansPerSecondSq,
   Seconds,
 } from "./types";
+import { Vector3 } from "three";
 
 /** Final velocity for constant acceleration */
 export function finalVelocity(
@@ -138,4 +139,21 @@ export function projectileMaxHeight(
 ): Meters {
   const vy0 = v0 * Math.sin(theta);
   return ((vy0 * vy0) / (2 * g)) as Meters;
+}
+
+/** Coriolis acceleration: -2 * omega x v */
+export function coriolisAcceleration(
+  angularVelocity: Vector3,
+  velocity: Vector3
+): Vector3 {
+  return angularVelocity.clone().cross(velocity).multiplyScalar(-2);
+}
+
+/** Centrifugal acceleration: -omega x (omega x r) */
+export function centrifugalAcceleration(
+  angularVelocity: Vector3,
+  position: Vector3
+): Vector3 {
+  const omegaCrossR = angularVelocity.clone().cross(position);
+  return angularVelocity.clone().cross(omegaCrossR).multiplyScalar(-1);
 }

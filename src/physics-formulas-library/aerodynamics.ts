@@ -9,6 +9,7 @@ import type {
   PascalsSecond,
   SquareMeters,
 } from "./types";
+import { Vector3 } from "three";
 
 /** Dynamic pressure */
 export function dynamicPressure(
@@ -103,4 +104,28 @@ export function stallSpeed(
   clMax: Dimensionless
 ): MetersPerSecond {
   return Math.sqrt((2 * weight) / (density * area * clMax)) as MetersPerSecond;
+}
+
+/** Lift force vector */
+export function liftVector(
+  liftN: Newtons,
+  liftDirection: Vector3
+): Vector3 {
+  return liftDirection.clone().normalize().multiplyScalar(liftN as number);
+}
+
+/** Drag force vector */
+export function dragVector(
+  dragN: Newtons,
+  dragDirection: Vector3
+): Vector3 {
+  return dragDirection.clone().normalize().multiplyScalar(dragN as number);
+}
+
+/** Side force vector */
+export function sideForceVector(
+  sideForceN: Newtons,
+  sideDirection: Vector3
+): Vector3 {
+  return sideDirection.clone().normalize().multiplyScalar(sideForceN as number);
 }

@@ -8,6 +8,10 @@ import type {
   MetersPerSecondSq,
   Pascals,
   GravitationalConstant,
+  FaradsPerMeter,
+  HenrysPerMeter,
+  Meters,
+  CoulombConstant,
 } from "./types";
 
 /** Standard gravity at sea level */
@@ -28,6 +32,14 @@ export const R_AIR = 287.05 as JoulesPerKilogramKelvin;
 export const GAMMA_AIR = 1.4 as Dimensionless;
 /** Speed of sound at sea level */
 export const A0 = 340.294 as MetersPerSecond;
+/** Vacuum permittivity */
+export const EPS0 = 8.8541878128e-12 as FaradsPerMeter;
+/** Vacuum permeability */
+export const MU0 = (4 * Math.PI * 1e-7) as HenrysPerMeter;
+/** Coulomb constant */
+export const K_E = 8.9875517923e9 as CoulombConstant;
+/** Astronomical unit */
+export const AU = 149597870700 as Meters;
 /** Unit conversion constants */
 export const RAD2DEG = (180 / Math.PI) as Dimensionless;
 export const DEG2RAD = (Math.PI / 180) as Dimensionless;

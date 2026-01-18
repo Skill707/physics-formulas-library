@@ -21,6 +21,7 @@ import type {
   Watts,
 } from "./types";
 import { BIG_G } from "./constants";
+import { Vector3 } from "three";
 
 /** Newton's second law */
 export function force(mass: Kilograms, acceleration: MetersPerSecondSq): Newtons {
@@ -67,14 +68,34 @@ export function momentum(mass: Kilograms, velocity: MetersPerSecond): KilogramMe
   return (mass * velocity) as KilogramMetersPerSecond;
 }
 
+/** Linear momentum vector */
+export function momentumVector(mass: Kilograms, velocity: Vector3): Vector3 {
+  return velocity.clone().multiplyScalar(mass as number);
+}
+
 /** Impulse from force and time */
 export function impulse(forceN: Newtons, time: Seconds): NewtonSeconds {
   return (forceN * time) as NewtonSeconds;
 }
 
+/** Impulse vector */
+export function impulseVector(force: Vector3, time: Seconds): Vector3 {
+  return force.clone().multiplyScalar(time as number);
+}
+
 /** Torque from force and moment arm */
 export function torque(forceN: Newtons, momentArm: Meters): NewtonMeters {
   return (forceN * momentArm) as NewtonMeters;
+}
+
+/** Torque vector: r x F */
+export function torqueVector(momentArm: Vector3, force: Vector3): Vector3 {
+  return momentArm.clone().cross(force);
+}
+
+/** Angular momentum vector: r x p */
+export function angularMomentumVector(position: Vector3, momentumVec: Vector3): Vector3 {
+  return position.clone().cross(momentumVec);
 }
 
 /** Rotational kinetic energy */
