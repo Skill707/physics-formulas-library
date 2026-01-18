@@ -1,4 +1,4 @@
-import { Vector3 } from "three";
+import { Vector2, Vector3 } from "three";
 import type { Dimensionless, Meters } from "./types";
 
 export type AirfoilPoint = { x: Meters; y: Meters };
@@ -117,4 +117,28 @@ export function generateNaca4Airfoil({
   }
 
   return { upper, lower, camber };
+}
+
+const polygonArea = (points: Vector2[]): number => {
+  let sum = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return 0.5 * sum;
+};
+
+/** Build a closed clockwise contour from airfoil surfaces */
+export function buildAirfoilContour(surface: AirfoilSurface): Vector2[] {
+  const upper = surface.upper.map((pt) => new Vector2(pt.x as number, pt.y as number));
+  const lower = surface.lower.map((pt) => new Vector2(pt.x as number, pt.y as number));
+
+  const contour = [...upper.slice().reverse(), ...lower.slice(1)];
+  if (contour.length < 3) return contour;
+
+  if (polygonArea(contour) > 0) {
+    contour.reverse();
+  }
+  return contour;
 }

@@ -1,25 +1,28 @@
 import * as THREE from "three";
 import { degToRad } from "../physics-formulas-library/units";
 import {
-  chordwisePressureCoefficient,
   dynamicPressure,
   laminarSkinFrictionCoefficient,
   pressureDragCoefficient,
   reynoldsNumberAtX,
   reynoldsNumberChord,
+  solvePanelMethod,
   skinFrictionDragCoefficient,
   thinAirfoilLiftCoefficient,
   totalDragCoefficient,
   turbulentSkinFrictionCoefficient,
+  velocityFromPanels,
   wallShearStress,
 } from "../physics-formulas-library/aerodynamics";
 import { densityAtAltitude } from "../physics-formulas-library/atmosphere";
-import { generateNaca4Airfoil } from "../physics-formulas-library/geometry";
+import { buildAirfoilContour, generateNaca4Airfoil } from "../physics-formulas-library/geometry";
 import type { AirfoilState } from "../store";
 import type {
   Dimensionless,
   Meters,
+  MetersPerSecond,
   PascalsSecond,
+  Pascals,
   Radians,
   SquareMeters,
 } from "../physics-formulas-library/types";
@@ -32,6 +35,7 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
 const toVec3 = (x: number, y: number): THREE.Vector3 => new THREE.Vector3(x, y, 0);
+const toVec2 = (x: number, y: number): THREE.Vector2 => new THREE.Vector2(x, y);
 
 const updateLineGeometry = (line: THREE.Line, points: THREE.Vector3[]): void => {
   const positions = new Float32Array(points.length * 3);
@@ -61,37 +65,44 @@ const computeNormals = (points: THREE.Vector3[], surface: "upper" | "lower"): TH
   });
 };
 
-const buildStreamlines = (
-  chord: number,
-  alphaRad: number,
-  camber: number,
-  count: number
-): THREE.Vector3[][] => {
-  const lines: THREE.Vector3[][] = [];
-  const xStart = -0.35 * chord;
-  const xEnd = 1.35 * chord;
-  const segments = 90;
-  const spacing = (1.2 * chord) / Math.max(1, count - 1);
-  const bias = (count - 1) * 0.5;
+const integrateStreamline = (
+  seed: THREE.Vector2,
+  velocityAt: (point: THREE.Vector2) => THREE.Vector2,
+  chord: number
+): THREE.Vector3[] => {
+  const points: THREE.Vector3[] = [];
+  let p = seed.clone();
+  const step = 0.03 * chord;
+  const maxSteps = 380;
+  const bounds = 1.6 * chord;
 
-  for (let i = 0; i < count; i += 1) {
-    const y0 = (i - bias) * spacing;
-    const points: THREE.Vector3[] = [];
-    for (let s = 0; s <= segments; s += 1) {
-      const t = s / segments;
-      const x = xStart + t * (xEnd - xStart);
-      const xNorm = (x / chord + 0.3) / 1.6;
-      const influence = Math.exp(-Math.pow((xNorm - 0.25) / 0.55, 2));
-      const bend = (alphaRad * 0.75 + camber * 1.4) * chord * influence;
-      const leading = 0.08 * chord * Math.exp(-Math.pow((xNorm - 0.08) / 0.12, 2));
-      const spread = clamp(1 - Math.abs(y0) / (0.9 * chord), 0, 1);
-      const y = y0 + (bend + Math.sign(y0 || 1) * leading) * spread;
-      points.push(toVec3(x, y));
-    }
-    lines.push(points);
+  for (let i = 0; i < maxSteps; i += 1) {
+    const v1 = velocityAt(p);
+    const speed = Math.max(1e-5, v1.length());
+    const k1 = v1.clone().divideScalar(speed).multiplyScalar(step);
+    const v2 = velocityAt(p.clone().addScaledVector(k1, 0.5));
+    const speed2 = Math.max(1e-5, v2.length());
+    const k2 = v2.clone().divideScalar(speed2).multiplyScalar(step);
+    const v3 = velocityAt(p.clone().addScaledVector(k2, 0.5));
+    const speed3 = Math.max(1e-5, v3.length());
+    const k3 = v3.clone().divideScalar(speed3).multiplyScalar(step);
+    const v4 = velocityAt(p.clone().add(k3));
+    const speed4 = Math.max(1e-5, v4.length());
+    const k4 = v4.clone().divideScalar(speed4).multiplyScalar(step);
+
+    const delta = k1
+      .clone()
+      .addScaledVector(k2, 2)
+      .addScaledVector(k3, 2)
+      .add(k4)
+      .multiplyScalar(1 / 6);
+    p = p.add(delta);
+    points.push(toVec3(p.x, p.y));
+
+    if (p.x > 1.6 * chord || Math.abs(p.y) > bounds || p.x < -0.8 * chord) break;
   }
 
-  return lines;
+  return points;
 };
 
 const clearStreamlines = (group: THREE.Group) => {
@@ -178,8 +189,8 @@ export const createAirfoilScene = (container: HTMLElement, getState: () => Airfo
     const outline = [...upperPoints, ...lowerPoints.slice().reverse()];
     updateLineGeometry(airfoilLine, outline);
 
-    const normalsUpper = computeNormals(upperPoints, "upper");
-    const normalsLower = computeNormals(lowerPoints, "lower");
+    const contour = buildAirfoilContour(airfoil);
+    const panelSolution = solvePanelMethod(contour, state.Vinf, alphaRad as Radians);
 
     const q = dynamicPressure(rho, state.Vinf);
     const reChord = reynoldsNumberChord(rho, state.Vinf, state.chord, VISCOSITY_AIR);
@@ -193,49 +204,55 @@ export const createAirfoilScene = (container: HTMLElement, getState: () => Airfo
     const shearLowerPoints: THREE.Vector3[] = [];
 
     let maxShear = 0;
-    upperPoints.forEach((point) => {
-      const xOverC = (point.x / chord) as Dimensionless;
-      const reX = reynoldsNumberAtX(rho, state.Vinf, point.x as Meters, VISCOSITY_AIR);
+    panelSolution.panels.forEach((panel, i) => {
+      const xCoord = clamp(panel.control.x, 0, chord) as Meters;
+      const vt = panelSolution.vt[i] as number;
+      const localSpeed = Math.max(0.1, Math.abs(vt));
+      const reX = reynoldsNumberAtX(rho, localSpeed as MetersPerSecond, xCoord, VISCOSITY_AIR);
       const cf = state.laminar
         ? laminarSkinFrictionCoefficient(reX)
         : turbulentSkinFrictionCoefficient(reX);
-      const tau = wallShearStress(q, cf) as number;
+      const qLocal = (0.5 * (rho as number) * localSpeed * localSpeed) as Pascals;
+      const tau = wallShearStress(qLocal, cf) as number;
       maxShear = Math.max(maxShear, tau);
     });
 
     const shearNorm = maxShear === 0 ? 1 : maxShear;
 
-    upperPoints.forEach((point, i) => {
-      const xOverC = (point.x / chord) as Dimensionless;
-      const cp = chordwisePressureCoefficient(xOverC, cl, state.m, "upper");
-      const thickness = pressureScale * Math.abs(cp as number);
-      const normal = normalsUpper[i] ?? new THREE.Vector3(0, 1, 0);
-      pressureUpperPoints.push(point.clone().add(normal.clone().multiplyScalar(thickness)));
+    panelSolution.panels.forEach((panel, i) => {
+      const cp = panelSolution.cp[i] as number;
+      const thickness = pressureScale * Math.abs(cp);
+      const offset = new THREE.Vector3(panel.normal.x, panel.normal.y, 0).multiplyScalar(thickness);
+      const point = toVec3(panel.control.x, panel.control.y).add(offset);
+      if (panel.control.y >= 0) {
+        pressureUpperPoints.push(point);
+      } else {
+        pressureLowerPoints.push(point);
+      }
 
-      const reX = reynoldsNumberAtX(rho, state.Vinf, point.x as Meters, VISCOSITY_AIR);
+      const vt = panelSolution.vt[i] as number;
+      const localSpeed = Math.max(0.1, Math.abs(vt));
+      const xCoord = clamp(panel.control.x, 0, chord) as Meters;
+      const reX = reynoldsNumberAtX(rho, localSpeed as MetersPerSecond, xCoord, VISCOSITY_AIR);
       const cf = state.laminar
         ? laminarSkinFrictionCoefficient(reX)
         : turbulentSkinFrictionCoefficient(reX);
-      const tau = wallShearStress(q, cf) as number;
+      const qLocal = (0.5 * (rho as number) * localSpeed * localSpeed) as Pascals;
+      const tau = wallShearStress(qLocal, cf) as number;
       const shearThickness = shearScale * (tau / shearNorm);
-      shearUpperPoints.push(point.clone().add(normal.clone().multiplyScalar(shearThickness)));
+      const shearOffset = new THREE.Vector3(panel.normal.x, panel.normal.y, 0).multiplyScalar(shearThickness);
+      const shearPoint = toVec3(panel.control.x, panel.control.y).add(shearOffset);
+      if (panel.control.y >= 0) {
+        shearUpperPoints.push(shearPoint);
+      } else {
+        shearLowerPoints.push(shearPoint);
+      }
     });
 
-    lowerPoints.forEach((point, i) => {
-      const xOverC = (point.x / chord) as Dimensionless;
-      const cp = chordwisePressureCoefficient(xOverC, cl, state.m, "lower");
-      const thickness = pressureScale * Math.abs(cp as number);
-      const normal = normalsLower[i] ?? new THREE.Vector3(0, -1, 0);
-      pressureLowerPoints.push(point.clone().add(normal.clone().multiplyScalar(thickness)));
-
-      const reX = reynoldsNumberAtX(rho, state.Vinf, point.x as Meters, VISCOSITY_AIR);
-      const cf = state.laminar
-        ? laminarSkinFrictionCoefficient(reX)
-        : turbulentSkinFrictionCoefficient(reX);
-      const tau = wallShearStress(q, cf) as number;
-      const shearThickness = shearScale * (tau / shearNorm);
-      shearLowerPoints.push(point.clone().add(normal.clone().multiplyScalar(shearThickness)));
-    });
+    pressureUpperPoints.sort((a, b) => a.x - b.x);
+    pressureLowerPoints.sort((a, b) => b.x - a.x);
+    shearUpperPoints.sort((a, b) => a.x - b.x);
+    shearLowerPoints.sort((a, b) => b.x - a.x);
 
     updateLineGeometry(pressureUpper, pressureUpperPoints);
     updateLineGeometry(pressureLower, pressureLowerPoints);
@@ -249,7 +266,15 @@ export const createAirfoilScene = (container: HTMLElement, getState: () => Airfo
 
     clearStreamlines(streamlineGroup);
     if (state.showStreamlines) {
-      const streamlineSets = buildStreamlines(chord, alphaRad as number, state.m as number, state.streamlineCount);
+      const vAtPoint = (point: THREE.Vector2) =>
+        velocityFromPanels(panelSolution, point, state.Vinf, alphaRad as Radians);
+      const seeds: THREE.Vector2[] = [];
+      const spacing = (1.6 * chord) / Math.max(1, state.streamlineCount - 1);
+      const bias = (state.streamlineCount - 1) * 0.5;
+      for (let i = 0; i < state.streamlineCount; i += 1) {
+        seeds.push(toVec2(-0.6 * chord, (i - bias) * spacing));
+      }
+      const streamlineSets = seeds.map((seed) => integrateStreamline(seed, vAtPoint, chord));
       streamlineSets.forEach((linePoints) => {
         const line = new THREE.Line(
           new THREE.BufferGeometry(),
