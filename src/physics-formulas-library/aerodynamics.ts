@@ -286,6 +286,17 @@ export function velocityFromPanels(
   return new Vector2(vx, vy);
 }
 
+/** Velocity at a point from solved panels */
+export function velocityAtPoint(
+  solution: PanelMethodSolution,
+  x: Meters,
+  y: Meters,
+  Vinf: MetersPerSecond,
+  alpha: Radians
+): Vector2 {
+  return velocityFromPanels(solution, new Vector2(x as number, y as number), Vinf, alpha);
+}
+
 /** Dynamic pressure */
 export function dynamicPressure(
   density: KilogramsPerCubicMeter,

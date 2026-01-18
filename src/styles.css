@@ -8,9 +8,6 @@
   --text: #f2f5f8;
   --muted: #9aa9bb;
   --accent: #6db7ff;
-  --pressure: #45d07a;
-  --shear: #e15249;
-  --flow: #7bb0ff;
   --shadow: 0 20px 60px rgba(5, 10, 20, 0.4);
   --radius: 18px;
 }
@@ -127,34 +124,6 @@ output {
   accent-color: var(--accent);
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 16px;
-}
-
-.stat {
-  background: rgba(18, 28, 40, 0.7);
-  border: 1px solid rgba(90, 120, 150, 0.2);
-  border-radius: 12px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat span {
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-}
-
-.stat strong {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 1rem;
-}
-
 .stage {
   position: relative;
   border-radius: var(--radius);
@@ -167,45 +136,6 @@ output {
 .canvas {
   position: absolute;
   inset: 0;
-}
-
-.legend {
-  position: absolute;
-  bottom: 18px;
-  right: 18px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.pill {
-  background: rgba(10, 14, 20, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.pill.pressure {
-  border-color: rgba(69, 208, 122, 0.6);
-  color: var(--pressure);
-}
-
-.pill.shear {
-  border-color: rgba(225, 82, 73, 0.6);
-  color: var(--shear);
-}
-
-.pill.flow {
-  border-color: rgba(123, 176, 255, 0.6);
-  color: var(--flow);
-}
-
-.pill.forces {
-  border-color: rgba(109, 183, 255, 0.6);
-  color: var(--accent);
 }
 
 @keyframes reveal {
