@@ -1,6 +1,9 @@
-export function maxPitchRateG(
+import type { Radians, MetersPerSecond } from "./types";
+import { G } from "./constants";
+
+export function maxPitchRate(
   gLimit: number,
-  tas: number
-) {
-  return ((gLimit * 9.81) / tas) * (180 / Math.PI);
+  tas: MetersPerSecond
+): Radians {
+  return ((gLimit * G) / tas) as Radians;
 }

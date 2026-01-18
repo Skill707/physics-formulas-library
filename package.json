@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production bun src/index.ts"
   },
   "dependencies": {
+    "@types/three": "^0.182.0",
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.182.0"
