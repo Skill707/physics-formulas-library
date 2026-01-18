@@ -7,3 +7,5 @@ export * from "./dynamics";
 export * from "./aerodynamics";
 export * from "./atmosphere";
 export * from "./control";
+export * from "./orientation";
+export * from "./math";
